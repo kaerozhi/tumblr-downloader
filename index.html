@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tumblr Manager Pro</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="nav-bar">
+        <div class="nav-item active" id="navDashboard">🏠 仪表盘</div>
+        <div class="nav-item" id="navDetail">🔍 单博客下载</div>
+        <div class="nav-item" id="navSettings">⚙️ 设置</div>
+    </div>
+
+    <div class="container">
+        
+        <div id="dashboardView" class="view-panel">
+            <div class="action-bar">
+                <label class="select-all-label"><input type="checkbox" id="chkSelectAll"> 全选</label>
+                <button id="btnCheckUpdates" class="secondary-btn">🔄 检查选中更新</button>
+                <button id="btnDownloadUpdates" class="success-btn" style="margin-top:0; flex:1;">📥 下载更新内容</button>
+            </div>
+
+            <div class="sub-tabs">
+                <div class="sub-tab active" id="subTabActive">👥 活跃关注 (<span id="countActive">0</span>)</div>
+                <div class="sub-tab" id="subTabArchived">📦 已归档 (<span id="countArchived">0</span>)</div>
+            </div>
+            
+            <div id="blogListContainer" class="blog-list">
+                <div class="empty-tip">暂无下载记录，请前往“单博客下载”添加</div>
+            </div>
+        </div>
+
+        <div id="detailView" class="view-panel" style="display: none;">
+            <div class="section">
+                <h3>🔗 获取目标</h3>
+                <input type="text" id="blogInput" placeholder="输入 Blog 域名 (例如: staff)">
+            </div>
+
+            <div class="section">
+                <h3>🎛️ 过滤与筛选</h3>
+                <div class="filter-group">
+                    <label><input type="checkbox" id="chkPhoto" checked> 静态图/GIF</label>
+                    <label><input type="checkbox" id="chkVideo" checked> 视频文件</label>
+                </div>
+                <div class="date-group">
+                    <label for="dateInput">📅 仅下载此日期之后的内容：</label>
+                    <input type="date" id="dateInput">
+                </div>
+            </div>
+
+            <button id="actionBtn">第一步：获取博客概览</button>
+
+            <div id="overviewPanel" class="overview-panel" style="display: none;">
+                <h4>📊 博客概览信息</h4>
+                <p>📌 博客名称：<span id="infoTitle">-</span></p>
+                <p>📝 总帖子数：<span id="infoTotal">-</span> 条</p>
+                <p>⏰ 最后更新：<span id="infoUpdated">-</span></p>
+                <button id="downloadBtn" class="success-btn">第二步：确认并开始下载</button>
+            </div>
+        </div>
+
+        <div id="settingsView" class="view-panel" style="display: none;">
+            <div class="section">
+                <h3>🔑 开发者配置</h3>
+                <p style="font-size: 12px; color: #666; margin: 0 0 8px 0;">请在此配置您的 Tumblr 官方 API 凭证。</p>
+                <input type="password" id="apiKeyInput" placeholder="输入你的 Tumblr API Key">
+                <button id="btnSaveSettings" class="success-btn" style="margin-top: 12px;">💾 保存配置</button>
+            </div>
+        </div>
+
+        <div id="statusArea" class="status-msg">等待指令...</div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
