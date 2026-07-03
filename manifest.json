@@ -1,7 +1,8 @@
 {
   "id": "com.kaerozhi.tumblrdownloader",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "platform": "all",
+  "logo": "logo.png",
   "name": "Tumblr Downloader",
   "description": "从 Tumblr 批量下载图片和视频",
   "main": {

@@ -11,8 +11,8 @@
 
 ## 安装方法
 
-1. 下载本仓库的 `.isp` 插件包。
-2. 双击 `.isp` 文件，或者直接拖入 Eagle 软件中即可完成安装。
+1. 下载本仓库的 `.eagleplugin` 插件包。
+2. 双击 `.eagleplugin` 文件，或者直接拖入 Eagle 软件中即可完成安装。
 3. 请自行申请 Tumblr 的 [API Key](https://www.tumblr.com/oauth/apps)，在「设置」页面中填入。
 
 祝使用愉快。
