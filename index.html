@@ -35,7 +35,7 @@
         <div id="detailView" class="view-panel" style="display: none;">
             <div class="section">
                 <h3>🔗 获取目标</h3>
-                <input type="text" id="blogInput" placeholder="输入 Blog 域名 (例如: staff)">
+                <input type="text" id="blogInput" placeholder="输入域名或直接粘贴带有 tagged 的完整 URL">
             </div>
 
             <div class="section">
@@ -43,6 +43,10 @@
                 <div class="filter-group">
                     <label><input type="checkbox" id="chkPhoto" checked> 静态图/GIF</label>
                     <label><input type="checkbox" id="chkVideo" checked> 视频文件</label>
+                </div>
+                <div class="date-group" style="margin-bottom: 8px;">
+                    <label for="tagInput">🏷️ 仅指定 Tag (可选，支持粘贴解析)：</label>
+                    <input type="text" id="tagInput" placeholder="例如: 王楚然 (留空则获取全部)">
                 </div>
                 <div class="date-group">
                     <label for="dateInput">📅 仅下载此日期之后的内容：</label>
@@ -55,7 +59,8 @@
             <div id="overviewPanel" class="overview-panel" style="display: none;">
                 <h4>📊 博客概览信息</h4>
                 <p>📌 博客名称：<span id="infoTitle">-</span></p>
-                <p>📝 总帖子数：<span id="infoTotal">-</span> 条</p>
+                <p>📝 筛选目标：<span id="infoTargetTag" style="color:#007aff; font-weight:bold;">全部内容</span></p>
+                <p>📝 估计匹配数：<span id="infoTotal">-</span> 条</p>
                 <p>⏰ 最后更新：<span id="infoUpdated">-</span></p>
                 <button id="downloadBtn" class="success-btn">第二步：确认并开始下载</button>
             </div>
