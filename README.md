@@ -2,6 +2,8 @@
 
 一款专为 Eagle 设计的 Tumblr 下载器，用于下载指定的 Tumblr Blog。
 
+## 2026-08-06 添加指定 tag 下载的功能。
+
 ## 核心特性
 
 - 下载指定的 Tumblr Blog（支持用户名或 url）；
