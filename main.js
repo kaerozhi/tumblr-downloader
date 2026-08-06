@@ -14,12 +14,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const actionBtn = document.getElementById('actionBtn');
     const downloadBtn = document.getElementById('downloadBtn');
     const blogInput = document.getElementById('blogInput');
-    const tagInput = document.getElementById('tagInput'); // ✨ 新增 Tag 输入框
+    const tagInput = document.getElementById('tagInput');
     const statusArea = document.getElementById('statusArea');
     
     const overviewPanel = document.getElementById('overviewPanel');
     const infoTitle = document.getElementById('infoTitle');
-    const infoTargetTag = document.getElementById('infoTargetTag'); // ✨ 新增展现当前筛选的 Tag
+    const infoTargetTag = document.getElementById('infoTargetTag');
     const infoTotal = document.getElementById('infoTotal');
     const infoUpdated = document.getElementById('infoUpdated');
     const chkPhoto = document.getElementById('chkPhoto');
@@ -61,27 +61,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!blog) return { blog: '', tag: '' };
 
-        // 尝试通过 URL 匹配
         try {
             if (blog.startsWith('http://') || blog.startsWith('https://')) {
                 const urlObj = new URL(blog);
                 const pathSegments = urlObj.pathname.split('/').filter(Boolean);
 
                 if (urlObj.hostname === 'www.tumblr.com') {
-                    // 格式: https://www.tumblr.com/cnladies/tagged/王楚然
                     if (pathSegments.length >= 1) blog = pathSegments[0];
                     if (pathSegments.length >= 3 && pathSegments[1] === 'tagged') {
                         tag = decodeURIComponent(pathSegments[2]);
                     }
                 } else if (urlObj.hostname.endsWith('.tumblr.com')) {
-                    // 格式: https://cnladies.tumblr.com/tagged/王楚然
                     blog = urlObj.hostname.replace('.tumblr.com', '');
                     if (pathSegments.length >= 2 && pathSegments[0] === 'tagged') {
                         tag = decodeURIComponent(pathSegments[1]);
                     }
                 }
             } else if (blog.includes('/tagged/')) {
-                // 处理非完整 URL 粘贴如 cnladies/tagged/王楚然
                 const parts = blog.split('/tagged/');
                 blog = parts[0].replace('www.tumblr.com/', '');
                 tag = decodeURIComponent(parts[1]);
@@ -90,7 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn("链接解析异常，回退到原始字符串:", e);
         }
 
-        // 清理末尾后缀与斜杠
         blog = blog.replace(/\/$/, '');
         if (blog.endsWith('.tumblr.com')) {
             blog = blog.replace('.tumblr.com', '');
@@ -99,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return { blog, tag };
     }
 
-    // ✨ 监听博客输入框失焦或粘贴事件，自动提取 Tag
+    // 监听输入框动态解析
     blogInput.addEventListener('input', () => {
         const rawVal = blogInput.value.trim();
         if (rawVal.includes('/tagged/') || rawVal.startsWith('http')) {
@@ -108,6 +103,102 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tag) tagInput.value = tag;
         }
     });
+
+    // ✨ 核心全能媒体解析器（兼容 Legacy 格式、NPF 块格式、Reblog 转发链及嵌入 HTML）
+    function extractMediaFromPost(post, needPhoto, needVideo) {
+        const mediaItems = [];
+        const addedUrls = new Set();
+
+        function addUrl(url, type) {
+            if (!url || addedUrls.has(url)) return;
+            addedUrls.add(url);
+            mediaItems.push({
+                url: url,
+                type: type,
+                source: post.post_url || '',
+                caption: post.summary || post.slug || `post_${post.id}`
+            });
+        }
+
+        // 1. 检查 Legacy Photos 数组 (取消 post.type === 'photo' 限制)
+        if (needPhoto && post.photos && Array.isArray(post.photos)) {
+            post.photos.forEach(p => {
+                if (p.original_size && p.original_size.url) {
+                    addUrl(p.original_size.url, 'photo');
+                }
+            });
+        }
+
+        // 2. 检查 NPF (Neue Post Format) Content 内容块
+        if (post.content && Array.isArray(post.content)) {
+            post.content.forEach(block => {
+                if (needPhoto && block.type === 'image' && block.media) {
+                    const mediaList = Array.isArray(block.media) ? block.media : [block.media];
+                    if (mediaList.length > 0) {
+                        let maxMedia = mediaList[0];
+                        for (let m of mediaList) {
+                            if ((m.width || 0) > (maxMedia.width || 0)) maxMedia = m;
+                        }
+                        if (maxMedia && maxMedia.url) addUrl(maxMedia.url, 'photo');
+                    }
+                }
+                if (needVideo && block.type === 'video') {
+                    if (block.media && block.media.url) {
+                        addUrl(block.media.url, 'video');
+                    } else if (Array.isArray(block.media) && block.media[0] && block.media[0].url) {
+                        addUrl(block.media[0].url, 'video');
+                    }
+                }
+            });
+        }
+
+        // 3. 检查 Reblog Trail (转发历史轨迹)
+        if (post.trail && Array.isArray(post.trail)) {
+            post.trail.forEach(trailItem => {
+                if (trailItem.content && Array.isArray(trailItem.content)) {
+                    trailItem.content.forEach(block => {
+                        if (needPhoto && block.type === 'image' && block.media) {
+                            const mediaList = Array.isArray(block.media) ? block.media : [block.media];
+                            if (mediaList.length > 0) {
+                                let maxMedia = mediaList[0];
+                                for (let m of mediaList) {
+                                    if ((m.width || 0) > (maxMedia.width || 0)) maxMedia = m;
+                                }
+                                if (maxMedia && maxMedia.url) addUrl(maxMedia.url, 'photo');
+                            }
+                        }
+                        if (needVideo && block.type === 'video' && block.media) {
+                            const vUrl = block.media.url || (Array.isArray(block.media) && block.media[0] && block.media[0].url);
+                            if (vUrl) addUrl(vUrl, 'video');
+                        }
+                    });
+                }
+            });
+        }
+
+        // 4. 检查 Legacy Video 字段
+        if (needVideo) {
+            if (post.video_url) addUrl(post.video_url, 'video');
+            if (post.video_file_url) addUrl(post.video_file_url, 'video');
+        }
+
+        // 5. 兜底：抓取 HTML 正文/Caption 中的图片链接
+        if (needPhoto && mediaItems.length === 0) {
+            const htmlSources = [post.body, post.caption].filter(Boolean);
+            htmlSources.forEach(html => {
+                const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi;
+                let match;
+                while ((match = imgRegex.exec(html)) !== null) {
+                    let imgUrl = match[1];
+                    if (imgUrl.includes('tumblr.com') && !imgUrl.includes('avatar')) {
+                        addUrl(imgUrl, 'photo');
+                    }
+                }
+            });
+        }
+
+        return mediaItems;
+    }
 
     // === 路由切页逻辑 ===
     function switchView(activeNav, activeView) {
@@ -144,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statusArea.style.color = "green";
     });
 
-    // === 渲染仪表盘已下载博客列表 ===
+    // === 渲染仪表盘列表 ===
     function renderBlogList() {
         const container = document.getElementById('blogListContainer');
         const keys = Object.keys(appData.trackedBlogs);
@@ -202,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
             link.addEventListener('click', (e) => {
                 const domain = e.target.getAttribute('data-domain');
                 blogInput.value = domain.split('.')[0];
-                tagInput.value = ''; // 切换时清空旧 tag
+                tagInput.value = '';
                 switchView(navDetail, detailView);
                 actionBtn.click();
             });
@@ -307,7 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnCheckUpdates.disabled = false;
     });
 
-    // === 一键追更新 ===
+    // === 批量追更新 ===
     const timeout = (ms) => new Promise((_, reject) => setTimeout(() => reject(new Error(`连接超时 (${ms / 1000}s)`)), ms));
 
     btnDownloadUpdates.addEventListener('click', async () => {
@@ -362,17 +453,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             break;
                         }
 
-                        if (needPhoto && post.type === 'photo' && post.photos) {
-                            post.photos.forEach(photo => {
-                                if (photo.original_size && photo.original_size.url) {
-                                    allMediaItems.push({ url: photo.original_size.url, source: post.post_url, caption: post.summary || domain.split('.')[0] });
-                                }
-                            });
-                        }
-
-                        if (needVideo && post.type === 'video' && post.video_url) {
-                            allMediaItems.push({ url: post.video_url, source: post.post_url, caption: post.summary || `video_${post.id}` });
-                        }
+                        const items = extractMediaFromPost(post, needPhoto, needVideo);
+                        allMediaItems.push(...items);
                     }
 
                     if (reachedTimeLimit) break;
@@ -420,7 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // === 核心逻辑：获取单博客概览（支持 Tag 匹配与解析） ===
+    // === 获取单博客概览 ===
     let targetBlogId = '';
     let targetTag = '';
 
@@ -440,15 +522,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // ✨ 智能提取域名和 Tag
         const parsed = parseTumblrInput(rawInput);
         let blogId = parsed.blog;
-        targetTag = manualTag || parsed.tag; // 如果手动填了以手动的优先，否则用自动解析的
+        targetTag = manualTag || parsed.tag;
 
         if (!blogId.includes('.')) { blogId = `${blogId}.tumblr.com`; }
         targetBlogId = blogId;
 
-        // 如果解析出了 Tag，反写回输入框展现给用户
         if (targetTag) {
             tagInput.value = targetTag;
         }
@@ -458,7 +538,6 @@ document.addEventListener('DOMContentLoaded', () => {
         overviewPanel.style.display = 'none';
 
         try {
-            // 1. 基本信息查询
             const infoUrl = `https://api.tumblr.com/v2/blog/${blogId}/info?api_key=${apiKey}`;
             const response = await fetch(infoUrl);
             const result = await response.json();
@@ -471,9 +550,8 @@ document.addEventListener('DOMContentLoaded', () => {
             infoTitle.innerText = blogInfo.title || blogInfo.name;
             infoUpdated.innerText = updateDate;
 
-            // 2. ✨ 如果设置了 Tag，精准查询该 Tag 下的估计条数
             if (targetTag) {
-                infoTargetTag.innerText = `标签标签：#${targetTag}`;
+                infoTargetTag.innerText = `标签：#${targetTag}`;
                 const tagCheckUrl = `https://api.tumblr.com/v2/blog/${blogId}/posts?api_key=${apiKey}&tag=${encodeURIComponent(targetTag)}&limit=1`;
                 const tagRes = await fetch(tagCheckUrl);
                 const tagResult = await tagRes.json();
@@ -512,7 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // === 核心逻辑：单博客全量/Tag 筛选下载 ===
+    // === 单博客全量/Tag 筛选下载 ===
     downloadBtn.addEventListener('click', async () => {
         const apiKey = appData.config.apiKey;
         const needPhoto = chkPhoto.checked;
@@ -539,7 +617,6 @@ document.addEventListener('DOMContentLoaded', () => {
             while (hasMore) {
                 statusArea.innerText = `🔍 正在扫描第 ${offset + 1} 条之后的帖子...`;
                 
-                // ✨ 核心 API：如果有 Tag 则拼接 &tag= 参数
                 let apiUrl = `https://api.tumblr.com/v2/blog/${targetBlogId}/posts?api_key=${apiKey}&limit=${limit}&offset=${offset}`;
                 if (currentTag) {
                     apiUrl += `&tag=${encodeURIComponent(currentTag)}`;
@@ -565,17 +642,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         break; 
                     }
 
-                    if (needPhoto && post.type === 'photo' && post.photos) {
-                        post.photos.forEach(photo => {
-                            if (photo.original_size && photo.original_size.url) {
-                                allMediaItems.push({ url: photo.original_size.url, source: post.post_url, caption: post.summary || targetBlogId.split('.')[0] });
-                            }
-                        });
-                    }
-
-                    if (needVideo && post.type === 'video' && post.video_url) {
-                        allMediaItems.push({ url: post.video_url, source: post.post_url, caption: post.summary || `video_${post.id}` });
-                    }
+                    // ✨ 使用全能提取器解析图片/视频
+                    const items = extractMediaFromPost(post, needPhoto, needVideo);
+                    allMediaItems.push(...items);
                 }
 
                 if (reachedTimeLimit) break;
@@ -589,14 +658,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // 基础标签，若带有 Tag，把 Tag 也加进 Eagle 标签组里
             const eagleTags = ["Tumblr", targetBlogId.split('.')[0]];
             if (currentTag) eagleTags.push(currentTag);
 
             let successCount = 0;
             for (let i = 0; i < allMediaItems.length; i++) {
                 const item = allMediaItems[i];
-                statusArea.innerText = `📥 正在导入入库: ${i + 1} / ${allMediaItems.length}`;
+                statusArea.innerText = `📥 正在导入入库 (${i + 1}/${allMediaItems.length}): ${item.caption.slice(0, 15)}...`;
                 try {
                     await Promise.race([
                         eagle.item.addFromURL(item.url, { name: item.caption, website: item.source, tags: eagleTags }),
@@ -611,7 +679,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (successCount > 0 && appData.trackedBlogs[targetBlogId]) {
                 appData.trackedBlogs[targetBlogId].lastDownloadTime = new Date().toLocaleString('zh-CN');
                 if (!filterDateStr && !currentTag && scanSessionNewestTimestamp) {
-                    // 仅当全量下载时更新主日志时间戳，避免被 Tag 局部下载打乱全局增量更新
                     appData.trackedBlogs[targetBlogId].lastDownloadTimestamp = scanSessionNewestTimestamp;
                 }
                 appData.trackedBlogs[targetBlogId].newPostsFound = 0;
